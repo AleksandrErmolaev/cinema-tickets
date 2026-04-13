@@ -152,6 +152,23 @@ services:
       FROM_EMAIL: study1423@gmail.com
     depends_on:
       - kafka
+
+postgres-backup:
+  image: postgres:15
+  volumes:
+    - ./backups:/backups
+  entrypoint: |
+    sh -c '
+    while true; do
+      sleep 86400;  # раз в сутки
+      /backup/backup_postgres.sh
+    done
+    '
+  depends_on:
+    - postgres-auth
+    - postgres-booking
+    - postgres-payment
+    - postgres-movie
       
 volumes:
   redis_data:
