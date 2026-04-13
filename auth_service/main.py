@@ -85,3 +85,10 @@ async def get_profile(credentials: HTTPAuthorizationCredentials = Depends(securi
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     return UserResponse(id=user.id, email=user.email, is_active=user.is_active)
+
+async def get_user_email(user_id: str, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return {"email": user.email}

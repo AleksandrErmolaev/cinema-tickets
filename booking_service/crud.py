@@ -5,6 +5,7 @@ from redis_client import get_redis
 from kafka_producer import send_event
 from datetime import datetime, timedelta
 import os
+import httpx
 
 BOOKING_TTL_MINUTES = int(os.getenv("BOOKING_TTL_MINUTES", "10"))
 
@@ -73,7 +74,33 @@ async def confirm_booking(db: AsyncSession, booking_id: str):
         return
     booking.status = BookingStatus.CONFIRMED
     await db.commit()
-    await send_event("booking.events", "booking.confirmed", {"booking_id": booking_id})
+
+    async with httpx.AsyncClient() as client:
+        try:
+            resp = await client.get(f"http://auth_service:8001/internal/users/{booking.user_id}/email")
+            user_email = resp.json().get("email") if resp.status_code == 200 else None
+        except Exception:
+            user_email = None
+
+    movie_title = "Unknown Movie"
+    async with httpx.AsyncClient() as client:
+        try:
+            resp = await client.get(f"http://movie_service:8000/showtimes/{booking.session_id}/movie")
+            if resp.status_code == 200:
+                movie_title = resp.json().get("movie_title", movie_title)
+        except Exception:
+            pass
+
+    await send_event(
+        "booking.events",
+        "booking.confirmed",
+        {
+            "booking_id": booking_id,
+            "user_email": user_email,
+            "seat_ids": booking.seat_ids,
+            "movie_title": movie_title
+        }
+    )
 
 async def cancel_booking(db: AsyncSession, booking_id: str, reason: str = "user_cancelled"):
     stmt = select(Booking).where(Booking.id == booking_id)
