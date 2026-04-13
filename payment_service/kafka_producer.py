@@ -1,7 +1,7 @@
 from aiokafka import AIOKafkaProducer
 import json
-import asyncio
 import os
+import uuid
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -14,7 +14,7 @@ async def start_kafka_producer():
     global producer
     producer = AIOKafkaProducer(
         bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
-        value_serializer=lambda v: json.dumps(v).encode()
+        value_serializer=lambda v: json.dumps(v, default=str).encode()
     )
     await producer.start()
 
@@ -22,15 +22,18 @@ async def stop_kafka_producer():
     if producer:
         await producer.stop()
 
-async def send_user_registered_event(user_id: str, email: str):
+async def send_payment_event(booking_id: str, status: str):
     if producer is None:
-        print("Kafka producer not initialized, event not sent")
+        print("Kafka producer not ready")
         return
     event = {
-        "event_type": "user.registered",
-        "user_id": user_id,
-        "email": email,
-        "timestamp": "2026-04-13T00:00:00Z"  # можно динамически
+        "event_type": f"payment.{status}",
+        "data": {
+            "booking_id": booking_id,
+            "status": status,
+            "payment_id": str(uuid.uuid4())
+        },
+        "timestamp": "2026-04-13T00:00:00Z"
     }
-    await producer.send("user.events", value=event)
-    print(f"Sent event: {event}")
+    await producer.send("payment.events", value=event)
+    print(f"Sent payment event: {event}")

@@ -1,0 +1,151 @@
+version: "3.9"
+
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:latest
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+
+  kafka:
+    image: confluentinc/cp-kafka:latest
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    ports:
+      - "9092:9092"
+
+  postgres-auth:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: users_db
+    ports:
+      - "5432:5432"
+
+  postgres-booking:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: booking_db
+    ports:
+      - "5433:5432"
+
+  postgres-payment:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: payment_db
+    ports:
+      - "5434:5432"
+
+  postgres-movie:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: movies
+    ports:
+      - "5435:5432"
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  minio:
+    image: minio/minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+
+  auth-service:
+    build: ./auth_service
+    ports:
+      - "8001:8001"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://user:password@postgres-auth:5432/users_db
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      JWT_SECRET_KEY: your-secret-key
+      JWT_ALGORITHM: HS256
+      JWT_EXPIRES_MINUTES: 60
+    depends_on:
+      - postgres-auth
+      - kafka
+
+  movie-service:
+    build: ./movie_service
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql://admin:admin@postgres-movie:5432/movies
+    depends_on:
+      - postgres-movie
+
+  booking-service:
+    build: ./booking_service
+    ports:
+      - "8002:8002"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://user:password@postgres-booking:5432/booking_db
+      REDIS_URL: redis://redis:6379/0
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      BOOKING_TTL_MINUTES: 10
+    depends_on:
+      - postgres-booking
+      - redis
+      - kafka
+
+  payment-service:
+    build: ./payment_service
+    ports:
+      - "8003:8003"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://user:password@postgres-payment:5432/payment_db
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      PAYMENT_SUCCESS_RATE: 0.8
+    depends_on:
+      - postgres-payment
+      - kafka
+
+  analytics-service:
+    build: ./analytics_service
+    ports:
+      - "8006:8006"
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      KAFKA_TOPICS: user.events,booking.events,payment.events
+      KAFKA_GROUP_ID: analytics-group
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+      MINIO_BUCKET: analytics-events
+      MINIO_SECURE: False
+      HEALTH_PORT: 8006
+    depends_on:
+      - kafka
+      - minio
+
+  notification-service:
+    build: ./notification_service
+    ports:
+      - "8004:8004"
+    environment:
+      KAFKA_BROKER: kafka:9092
+      SMTP_HOST: study14@gmail.com
+      SMTP_PORT: 587
+      SMTP_USER: study1423
+      SMTP_PASS: jfggnodsngovn
+      FROM_EMAIL: study1423@gmail.com
+    depends_on:
+      - kafka
