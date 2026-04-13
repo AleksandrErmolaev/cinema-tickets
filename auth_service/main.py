@@ -11,7 +11,6 @@ import asyncio
 
 app = FastAPI(title="User Service")
 
-# Создание таблиц при старте (для упрощения, в проде миграции)
 @app.on_event("startup")
 async def startup():
     async with engine.begin() as conn:
@@ -22,7 +21,6 @@ async def startup():
 async def shutdown():
     await stop_kafka_producer()
 
-# Pydantic модели
 class UserRegister(BaseModel):
     email: EmailStr
     password: str
@@ -40,23 +38,19 @@ class UserResponse(BaseModel):
     email: str
     is_active: bool
 
-# Эндпоинты
 @app.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 async def register(user_data: UserRegister, db: AsyncSession = Depends(get_db)):
-    # Проверка существования пользователя
     result = await db.execute(select(User).where(User.email == user_data.email))
     existing = result.scalar_one_or_none()
     if existing:
         raise HTTPException(status_code=400, detail="Email already registered")
     
-    # Создание пользователя
     hashed = hash_password(user_data.password)
     new_user = User(email=user_data.email, hashed_password=hashed)
     db.add(new_user)
     await db.commit()
     await db.refresh(new_user)
     
-    # Отправка события в Kafka
     await send_user_registered_event(new_user.id, new_user.email)
     
     return UserResponse(id=new_user.id, email=new_user.email, is_active=new_user.is_active)
@@ -71,7 +65,6 @@ async def login(user_data: UserLogin, db: AsyncSession = Depends(get_db)):
     access_token = create_access_token(data={"sub": user.id})
     return TokenResponse(access_token=access_token, token_type="bearer")
 
-# Защищённый эндпоинт для получения профиля (используем JWT)
 security = HTTPBearer()
 
 @app.get("/profile", response_model=UserResponse)
