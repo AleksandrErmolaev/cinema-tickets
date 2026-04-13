@@ -30,7 +30,7 @@ async def send_user_registered_event(user_id: str, email: str):
         "event_type": "user.registered",
         "user_id": user_id,
         "email": email,
-        "timestamp": "2026-04-13T00:00:00Z"
+        "timestamp": "2026-04-13T00:00:00Z"  # можно динамически
     }
     await producer.send("user.events", value=event)
     print(f"Sent event: {event}")
