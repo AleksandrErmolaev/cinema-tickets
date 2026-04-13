@@ -1,4 +1,3 @@
-# notification_service/app/kafka_consumer.py
 import json
 from kafka import KafkaConsumer
 from .config import KAFKA_BROKER
