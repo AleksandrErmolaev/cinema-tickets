@@ -1,0 +1,27 @@
+  booking-db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: booking_db
+    ports:
+      - "5433:5432"
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  booking-service:
+    build: ./booking_service
+    ports:
+      - "8002:8002"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://user:password@booking-db:5432/booking_db
+      REDIS_URL: redis://redis:6379/0
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      BOOKING_TTL_MINUTES: 10
+    depends_on:
+      - booking-db
+      - redis
+      - kafka
