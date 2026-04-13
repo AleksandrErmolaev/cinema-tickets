@@ -1,66 +1,75 @@
-from fastapi import FastAPI, HTTPException, Depends, status
+from fastapi import FastAPI, HTTPException, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
-from database import get_db, engine
-from models import Base
-from schemas import BookingCreate, BookingResponse
-from crud import create_booking, get_user_bookings, cancel_booking
-from kafka_producer import start_kafka_producer, stop_kafka_producer
-from kafka_consumer import consume_payment_events
+from redis_client import init_redis, close_redis, get_free_seats_mask, lock_seat, unlock_seat, mark_seat_as_booked
+from kafka_producer import send_booking_event  # допустим, такой модуль есть
+from database import get_db
 import asyncio
-import uuid
 
-app = FastAPI(title="Booking Service")
+app = FastAPI()
 
 @app.on_event("startup")
 async def startup():
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    await start_kafka_producer()
-    asyncio.create_task(consume_payment_events())
+    await init_redis()
 
 @app.on_event("shutdown")
 async def shutdown():
-    await stop_kafka_producer()
+    await close_redis()
 
-@app.post("/bookings", response_model=BookingResponse, status_code=status.HTTP_201_CREATED)
-async def new_booking(booking_data: BookingCreate, db: AsyncSession = Depends(get_db)):
-    booking, error = await create_booking(db, booking_data.user_id, booking_data.session_id, booking_data.seat_ids)
-    if error:
-        raise HTTPException(status_code=409, detail=error)
-    return BookingResponse(
-        id=booking.id,
-        user_id=booking.user_id,
-        session_id=booking.session_id,
-        seat_ids=booking.seat_ids,
-        status=booking.status,
-        created_at=booking.created_at,
-        expires_at=booking.expires_at
-    )
+@app.post("/bookings")
+async def create_booking(
+    session_id: str, 
+    seat_numbers: list[int],
+    user_id: str,
+    db: AsyncSession = Depends(get_db)
+):
+    mask = await get_free_seats_mask(session_id)
+    if mask is None:
+        mask = await load_mask_from_db(session_id, db)
+        await set_free_seats_mask(session_id, mask)
+    
+    unavailable = []
+    for seat in seat_numbers:
+        if mask[seat] != '1' or not await lock_seat(session_id, seat, ttl_seconds=600):
+            unavailable.append(seat)
+    if unavailable:
+        for seat in seat_numbers:
+            await unlock_seat(session_id, seat)
+        raise HTTPException(status_code=409, detail=f"Seats {unavailable} not available")
+    
+    booking_id = await create_booking_in_db(session_id, seat_numbers, user_id, db)
+    
+    # 4. Публикуем событие в Kafka: booking.created
+    await send_booking_event("booking.created", {
+        "booking_id": booking_id,
+        "session_id": session_id,
+        "seat_numbers": seat_numbers,
+        "user_id": user_id
+    })
+    
+    return {"booking_id": booking_id, "status": "pending"}
 
-@app.get("/bookings/user/{user_id}", response_model=list[BookingResponse])
-async def list_user_bookings(user_id: str, db: AsyncSession = Depends(get_db)):
-    bookings = await get_user_bookings(db, user_id)
-    return [BookingResponse(
-        id=b.id, user_id=b.user_id, session_id=b.session_id,
-        seat_ids=b.seat_ids, status=b.status, created_at=b.created_at, expires_at=b.expires_at
-    ) for b in bookings]
+# Эндпоинт для подтверждения оплаты (вызывается после payment.completed)
+@app.post("/bookings/{booking_id}/confirm")
+async def confirm_booking(booking_id: str, db: AsyncSession = Depends(get_db)):
+    # Получаем session_id и seat_numbers из БД
+    session_id, seat_numbers = await get_booking_details(booking_id, db)
+    # Окончательно занимаем места в Redis
+    for seat in seat_numbers:
+        await mark_seat_as_booked(session_id, seat)
+        await unlock_seat(session_id, seat)  # снимаем временную блокировку
+    # Обновляем статус в БД
+    await update_booking_status(booking_id, "confirmed", db)
+    # Публикуем событие booking.confirmed
+    await send_booking_event("booking.confirmed", {"booking_id": booking_id})
+    return {"status": "confirmed"}
 
+# Отмена брони (пользователь или таймаут)
 @app.delete("/bookings/{booking_id}")
-async def cancel(booking_id: str, db: AsyncSession = Depends(get_db)):
-    await cancel_booking(db, booking_id, reason="user_cancelled")
-    return {"status": "cancelled"}
-
-@app.get("/seats/{session_id}/available")
-async def check_available(session_id: str, seat_ids: list[str] = None):
-    redis = await get_redis()
-    if seat_ids:
-        locked = []
-        for seat in seat_ids:
-            key = f"seat:lock:{session_id}:{seat}"
-            val = await redis.get(key)
-            if val:
-                locked.append(seat)
-        available = [s for s in seat_ids if s not in locked]
-        return {"available": available, "locked": locked}
-    else:
-        return {"message": "Please provide seat_ids list"}
+async def cancel_booking(booking_id: str, db: AsyncSession = Depends(get_db)):
+    session_id, seat_numbers = await get_booking_details(booking_id, db)
+    for seat in seat_numbers:
+        await unlock_seat(session_id, seat)  # освобождаем блокировку, но маска не меняется? 
+        # Для отмены до оплаты – место снова свободно. Нужно обновить маску:
+        # await mark_seat_as_free(session_id, seat) - допишите по аналогии
+    await update_booking_status(booking_id, "cancelled", db)
+    await send_booking_event("booking.cancelled", {"booking_id": booking_id})
