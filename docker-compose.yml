@@ -58,6 +58,9 @@ services:
     image: redis:7-alpine
     ports:
       - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
 
   minio:
     image: minio/minio
@@ -166,3 +169,6 @@ postgres-backup:
     - postgres-booking
     - postgres-payment
     - postgres-movie
+      
+volumes:
+  redis_data:
