@@ -1,8 +1,8 @@
 from aiokafka import AIOKafkaConsumer
 import json
 import asyncio
-from booking_service.crud import confirm_booking, cancel_booking
-from booking_service.database import AsyncSessionLocal
+from crud import confirm_booking, cancel_booking
+from database import AsyncSessionLocal
 import os
 
 KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS")
