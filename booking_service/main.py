@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from redis_client import init_redis, close_redis, get_free_seats_mask, lock_seat, unlock_seat, mark_seat_as_booked
-from kafka_producer import send_booking_event  # допустим, такой модуль есть
+from kafka_producer import send_event
 from database import get_db
 import asyncio
 
@@ -38,7 +38,6 @@ async def create_booking(
     
     booking_id = await create_booking_in_db(session_id, seat_numbers, user_id, db)
     
-    # 4. Публикуем событие в Kafka: booking.created
     await send_booking_event("booking.created", {
         "booking_id": booking_id,
         "session_id": session_id,
@@ -72,4 +71,4 @@ async def cancel_booking(booking_id: str, db: AsyncSession = Depends(get_db)):
         # Для отмены до оплаты – место снова свободно. Нужно обновить маску:
         # await mark_seat_as_free(session_id, seat) - допишите по аналогии
     await update_booking_status(booking_id, "cancelled", db)
-    await send_booking_event("booking.cancelled", {"booking_id": booking_id})
+    await send_event("booking.cancelled", {"booking_id": booking_id})

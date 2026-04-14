@@ -32,3 +32,8 @@ async def send_event(topic: str, event_type: str, data: dict):
     }
     await producer.send(topic, value=message)
     print(f"Sent event {event_type} to {topic}: {message}")
+
+
+async def send_booking_event(booking_data: dict):
+    """Отправка события бронирования в Kafka"""
+    await send_event("booking.events", "booking_event", booking_data)
