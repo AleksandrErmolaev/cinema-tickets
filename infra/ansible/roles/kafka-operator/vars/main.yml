@@ -1,0 +1,2 @@
+strimzi_helm_repo: "https://strimzi.io/charts/"
+strimzi_helm_chart: "strimzi/strimzi-kafka-operator"

@@ -1,0 +1,55 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vmalert-config
+  namespace: observability
+data:
+  alerts.yml: |
+    groups:
+      - name: service_health
+        interval: 30s
+        rules:
+          - alert: HighLatency
+            expr: histogram_quantile(0.95, sum(rate(istio_request_duration_milliseconds_bucket[2m])) by (destination_service)) / 1000 > 45
+            for: 2m
+            labels:
+              severity: warning
+            annotations:
+              summary: "High p95 latency for {{ $labels.destination_service }}"
+              description: "p95 latency is {{ $value }} seconds"
+
+          - alert: HighErrorRate
+            expr: sum(rate(istio_requests_total{response_code=~"5.."}[5m])) by (destination_service) / sum(rate(istio_requests_total[5m])) by (destination_service) * 100 > 5
+            for: 5m
+            labels:
+              severity: critical
+            annotations:
+              summary: "High error rate for {{ $labels.destination_service }}"
+              description: "Error rate is {{ $value }}%"
+
+          - alert: NoTraffic
+            expr: sum(rate(istio_requests_total[30m])) == 0
+            for: 30m
+            labels:
+              severity: info
+            annotations:
+              summary: "No incoming traffic"
+              description: "Cluster has received no requests for 30 minutes"
+
+          - alert: KafkaConsumerLag
+            expr: max(kafka_consumer_lag) > 1000
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "High Kafka consumer lag"
+              description: "Consumer lag is {{ $value }}"
+
+          - alert: CircuitBreakerTripped
+            expr: increase(envoy_cluster_upstream_cx_overflow[1m]) > 0
+            for: 0s
+            labels:
+              severity: critical
+            annotations:
+              summary: "Circuit breaker tripped"
+              description: "Circuit breaker opened for {{ $labels.cluster_name }}"

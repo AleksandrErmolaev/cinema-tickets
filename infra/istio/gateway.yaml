@@ -1,0 +1,83 @@
+apiVersion: networking.istio.io/v1beta1
+kind: Gateway
+metadata:
+  name: ticket-system-gateway
+  namespace: istio-system
+spec:
+  selector:
+    istio: ingressgateway
+  servers:
+  - port:
+      number: 80
+      name: http
+      protocol: HTTP
+    hosts:
+    - "*"
+---
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: ingress-virtualservice
+  namespace: istio-system
+spec:
+  hosts:
+  - "*"
+  gateways:
+  - ticket-system-gateway
+  http:
+  - match:
+    - uri:
+        prefix: "/register"
+    - uri:
+        prefix: "/login"
+    - uri:
+        prefix: "/profile"
+    route:
+    - destination:
+        host: auth-service.auth.svc.cluster.local
+        port:
+          number: 8001
+  - match:
+    - uri:
+        prefix: "/movies"
+    - uri:
+        prefix: "/showtimes"
+    - uri:
+        prefix: "/sync"
+    route:
+    - destination:
+        host: movie-service.movie.svc.cluster.local
+        port:
+          number: 8000
+  - match:
+    - uri:
+        prefix: "/bookings"
+    route:
+    - destination:
+        host: booking-service.booking.svc.cluster.local
+        port:
+          number: 8002
+  - match:
+    - uri:
+        prefix: "/payments"
+    route:
+    - destination:
+        host: payment-service.payment.svc.cluster.local
+        port:
+          number: 8003
+  - match:
+    - uri:
+        prefix: "/analytics"
+    route:
+    - destination:
+        host: analytics-service.analytics.svc.cluster.local
+        port:
+          number: 8006
+  - match:
+    - uri:
+        prefix: "/notify"
+    route:
+    - destination:
+        host: notification-service.notification.svc.cluster.local
+        port:
+          number: 8004

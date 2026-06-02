@@ -1,0 +1,30 @@
+replicaCount: 1
+
+image:
+  repository: localhost:5000/cinema-tickets/notification-service
+  tag: latest
+  pullPolicy: Always
+
+service:
+  type: ClusterIP
+  port: 8004
+  targetPort: 8004
+
+kafka:
+  enabled: true
+  bootstrapServers: "ticket-kafka-kafka-bootstrap.kafka:9092"
+
+smtp:
+  host: "smtp.gmail.com"
+  port: 587
+  user: "study1423"
+  password: "jfggnodsngovn"
+  fromEmail: "study1423@gmail.com"
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi

@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "booking-service.fullname" . }}-config
+  labels:
+    {{- include "booking-service.labels" . | nindent 4 }}
+data:
+  DATABASE_URL: "postgresql+asyncpg://{{ .Values.postgres.user }}:{{ .Values.postgres.password }}@{{ .Values.postgres.host }}:{{ .Values.postgres.port }}/{{ .Values.postgres.database }}"
+  KAFKA_BOOTSTRAP_SERVERS: "{{ .Values.kafka.bootstrapServers }}"
+  REDIS_URL: "{{ .Values.redis.url }}"
+  BOOKING_TTL_MINUTES: "{{ .Values.env.BOOKING_TTL_MINUTES }}"

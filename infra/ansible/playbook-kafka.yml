@@ -1,0 +1,7 @@
+- name: Deploy Kafka using Strimzi operator
+  hosts: localhost
+  connection: local
+  vars:
+    kubeconfig_path: "{{ lookup('env', 'KUBECONFIG') | default('~/.kube/config', true) }}"
+  roles:
+    - kafka-operator

@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis-ratelimit
+  namespace: istio-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis-ratelimit
+  template:
+    metadata:
+      labels:
+        app: redis-ratelimit
+    spec:
+      containers:
+      - name: redis
+        image: redis:7-alpine
+        ports:
+        - containerPort: 6379
+        args: ["--appendonly", "no"]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-ratelimit-svc
+  namespace: istio-system
+spec:
+  selector:
+    app: redis-ratelimit
+  ports:
+  - port: 6379
+    targetPort: 6379

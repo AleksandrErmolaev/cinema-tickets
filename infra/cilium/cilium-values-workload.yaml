@@ -1,0 +1,27 @@
+# cilium/cilium-values-workload.yaml
+cluster:
+  name: workload
+  id: 1
+
+ipam:
+  mode: kubernetes
+
+tunnel: geneve
+kubeProxyReplacement: disabled
+
+nodeinit:
+  enabled: true
+
+hubble:
+  enabled: true
+  relay:
+    enabled: true
+  ui:
+    enabled: true
+
+prometheus:
+  enabled: true
+
+operator:
+  prometheus:
+    enabled: true

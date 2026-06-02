@@ -1,0 +1,17 @@
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: payment-service
+  namespace: payment
+spec:
+  hosts:
+  - payment-service.payment.svc.cluster.local
+  http:
+  - route:
+    - destination:
+        host: payment-service.payment.svc.cluster.local
+    retries:
+      attempts: 3
+      perTryTimeout: 30s
+      retryOn: "5xx,connect-failure,refused-stream,reset"
+    timeout: 60s

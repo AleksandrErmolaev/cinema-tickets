@@ -1,0 +1,27 @@
+replicaCount: 1
+
+image:
+  repository: localhost:5000/cinema-tickets/movie-service
+  tag: latest
+  pullPolicy: Always
+
+service:
+  type: ClusterIP
+  port: 8000
+  targetPort: 8000
+
+postgres:
+  enabled: true
+  host: "postgres-movie.infra"
+  port: 5432
+  database: "movies"
+  user: "admin"
+  password: "admin"
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi

@@ -1,0 +1,38 @@
+serviceAccount:
+  create: true
+
+vmstorage:
+  replicaCount: 2
+  persistence:
+    enabled: true
+    size: 20Gi
+  resources:
+    requests:
+      cpu: 200m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 2Gi
+
+vminsert:
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+
+vmselect:
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 512Mi
+
+vmcluster:
+  enabled: true
+
+service:
+  vminsert:
+    type: ClusterIP
+  vmselect:
+    type: ClusterIP

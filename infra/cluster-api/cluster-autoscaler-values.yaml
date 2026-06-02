@@ -1,0 +1,13 @@
+cloudProvider: clusterapi
+autoDiscovery:
+  clusterName: workload
+rbac:
+  create: true
+
+extraArgs:
+  log-level: debug
+  scale-down-enabled: true
+  scale-down-delay-after-add: 5m
+  scan-interval: 10s
+  expander: random
+  node-group-auto-discovery: "clusterapi:namespace=default"

@@ -1,0 +1,18 @@
+{
+  "title": "Kafka Dashboard",
+  "uid": "kafka-dashboard",
+  "panels": [
+    {
+      "title": "Consumer Lag",
+      "targets": [
+        { "expr": "kafka_consumer_lag" }
+      ]
+    },
+    {
+      "title": "Messages in per second",
+      "targets": [
+        { "expr": "rate(kafka_topic_partition_current_offset[1m])" }
+      ]
+    }
+  ]
+}

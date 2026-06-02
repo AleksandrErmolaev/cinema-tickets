@@ -1,0 +1,9 @@
+strimzi_helm_chart_version: "0.36.0"
+strimzi_namespace: "kafka"
+kafka_cluster_name: "ticket-kafka"
+kafka_replicas: 1
+zookeeper_replicas: 1
+kafka_storage_class: "standard"
+kubeconfig_path: "~/.kube/config"
+listener_internal_port: 9092
+listener_external_port: 9094

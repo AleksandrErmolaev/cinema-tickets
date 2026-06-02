@@ -1,0 +1,36 @@
+replicaCount: 1
+
+image:
+  repository: localhost:5000/cinema-tickets/auth-service
+  tag: latest
+  pullPolicy: Always
+
+service:
+  type: ClusterIP
+  port: 8001
+  targetPort: 8001
+
+env:
+  JWT_SECRET_KEY: ""
+  JWT_ALGORITHM: "HS256"
+  JWT_EXPIRES_MINUTES: 60
+
+kafka:
+  enabled: true
+  bootstrapServers: "ticket-kafka-kafka-bootstrap.kafka:9092"
+
+postgres:
+  enabled: true
+  host: "postgres-auth.infra"
+  port: 5432
+  database: "users_db"
+  user: "user"
+  password: "password"
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
