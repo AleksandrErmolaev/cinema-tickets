@@ -1,0 +1,38 @@
+replicaCount: 1
+
+image:
+  repository: localhost:5000/cinema-tickets/booking-service
+  tag: latest
+  pullPolicy: Always
+
+service:
+  type: ClusterIP
+  port: 8002
+  targetPort: 8002
+
+env:
+  BOOKING_TTL_MINUTES: 10
+
+redis:
+  enabled: true
+  url: "redis://redis.infra:6379/0"
+
+kafka:
+  enabled: true
+  bootstrapServers: "ticket-kafka-kafka-bootstrap.kafka:9092"
+
+postgres:
+  enabled: true
+  host: "postgres-booking.infra"
+  port: 5432
+  database: "booking_db"
+  user: "user"
+  password: "password"
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi

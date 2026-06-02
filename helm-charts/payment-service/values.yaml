@@ -1,0 +1,34 @@
+replicaCount: 1
+
+image:
+  repository: localhost:5000/cinema-tickets/payment-service
+  tag: latest
+  pullPolicy: Always
+
+service:
+  type: ClusterIP
+  port: 8003
+  targetPort: 8003
+
+env:
+  PAYMENT_SUCCESS_RATE: 0.8
+
+kafka:
+  enabled: true
+  bootstrapServers: "ticket-kafka-kafka-bootstrap.kafka:9092"
+
+postgres:
+  enabled: true
+  host: "postgres-payment.infra"
+  port: 5432
+  database: "payment_db"
+  user: "user"
+  password: "password"
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi

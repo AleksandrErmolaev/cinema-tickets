@@ -1,0 +1,51 @@
+- name: Add Strimzi Helm repository
+  kubernetes.core.helm_repository:
+    name: strimzi
+    repo_url: "{{ strimzi_helm_repo }}"
+
+- name: Deploy Strimzi operator
+  kubernetes.core.helm:
+    name: strimzi-kafka-operator
+    chart_ref: "{{ strimzi_helm_chart }}"
+    chart_version: "{{ strimzi_helm_chart_version }}"
+    release_namespace: "{{ strimzi_namespace }}"
+    create_namespace: true
+    values:
+      watchNamespaces: ["{{ strimzi_namespace }}"]
+  register: helm_result
+
+- name: Wait for Strimzi operator to be ready
+  kubernetes.core.k8s_info:
+    kind: Deployment
+    namespace: "{{ strimzi_namespace }}"
+    name: strimzi-cluster-operator
+    kubeconfig: "{{ kubeconfig_path }}"
+  register: operator_status
+  until: operator_status.resources | length > 0 and operator_status.resources[0].status.readyReplicas is defined and operator_status.resources[0].status.readyReplicas > 0
+  retries: 30
+  delay: 10
+
+- name: Create Kafka custom resource from template
+  kubernetes.core.k8s:
+    kubeconfig: "{{ kubeconfig_path }}"
+    namespace: "{{ strimzi_namespace }}"
+    definition: "{{ lookup('template', 'kafka.yaml.j2') | from_yaml }}"
+  register: kafka_result
+
+- name: Wait for Kafka cluster to be ready
+  kubernetes.core.k8s_info:
+    kind: Kafka
+    namespace: "{{ strimzi_namespace }}"
+    name: "{{ kafka_cluster_name }}"
+    kubeconfig: "{{ kubeconfig_path }}"
+  register: kafka_status
+  until: kafka_status.resources | length > 0 and kafka_status.resources[0].status.conditions is defined and kafka_status.resources[0].status.conditions | selectattr('type','equalto','Ready') | map(attribute='status') | first == 'True'
+  retries: 60
+  delay: 10
+
+- name: Display connection info
+  debug:
+    msg: |
+      Kafka cluster {{ kafka_cluster_name }} is ready.
+      Internal bootstrap: {{ kafka_cluster_name }}-kafka-bootstrap.{{ strimzi_namespace }}.svc.cluster.local:{{ listener_internal_port }}
+      External NodePort: <node-ip>:{{ listener_external_port }}

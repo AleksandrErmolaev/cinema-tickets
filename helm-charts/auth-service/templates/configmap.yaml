@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "auth-service.fullname" . }}-config
+  labels:
+    {{- include "auth-service.labels" . | nindent 4 }}
+data:
+  {{- if .Values.postgres.enabled }}
+  DATABASE_URL: "postgresql+asyncpg://{{ .Values.postgres.user }}:{{ .Values.postgres.password }}@{{ .Values.postgres.host }}:{{ .Values.postgres.port }}/{{ .Values.postgres.database }}"
+  {{- end }}
+  {{- if .Values.kafka.enabled }}
+  KAFKA_BOOTSTRAP_SERVERS: "{{ .Values.kafka.bootstrapServers }}"
+  {{- end }}
+  JWT_SECRET_KEY: "{{ .Values.env.JWT_SECRET_KEY }}"
+  JWT_ALGORITHM: "{{ .Values.env.JWT_ALGORITHM }}"
+  JWT_EXPIRES_MINUTES: "{{ .Values.env.JWT_EXPIRES_MINUTES }}"

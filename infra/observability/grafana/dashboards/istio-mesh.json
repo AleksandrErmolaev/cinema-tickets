@@ -1,0 +1,18 @@
+{
+  "title": "Istio Mesh Dashboard",
+  "uid": "istio-mesh-dashboard",
+  "panels": [
+    {
+      "title": "Request volume (source → destination)",
+      "targets": [
+        { "expr": "sum(rate(istio_requests_total[1m])) by (source_workload, destination_workload)" }
+      ]
+    },
+    {
+      "title": "Circuit breaker status (open circuits)",
+      "targets": [
+        { "expr": "envoy_cluster_upstream_cx_overflow" }
+      ]
+    }
+  ]
+}

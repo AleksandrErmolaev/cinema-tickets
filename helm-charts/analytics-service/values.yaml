@@ -1,0 +1,31 @@
+replicaCount: 1
+
+image:
+  repository: localhost:5000/cinema-tickets/analytics-service
+  tag: latest
+  pullPolicy: Always
+
+service:
+  type: ClusterIP
+  port: 8006
+  targetPort: 8006
+
+kafka:
+  enabled: true
+  bootstrapServers: "ticket-kafka-kafka-bootstrap.kafka:9092"
+
+minio:
+  enabled: true
+  endpoint: "minio.infra:9000"
+  accessKey: "minioadmin"
+  secretKey: "minioadmin"
+  bucket: "analytics-events"
+  secure: false
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi

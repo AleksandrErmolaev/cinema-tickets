@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vmalert
+  namespace: observability
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vmalert
+  template:
+    metadata:
+      labels:
+        app: vmalert
+    spec:
+      containers:
+        - name: vmalert
+          image: victoriametrics/vmalert:latest
+          args:
+            - "-datasource.url=http://victoria-metrics-vmselect.observability:8481/select/0/prometheus"
+            - "-notifier.url=http://alertmanager.observability:9093"
+            - "-rule=/etc/alerts/*.yml"
+            - "-external.url=http://vmalert.observability:8880"
+          ports:
+            - containerPort: 8880
+          volumeMounts:
+            - name: alerts
+              mountPath: /etc/alerts
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+      volumes:
+        - name: alerts
+          configMap:
+            name: vmalert-config

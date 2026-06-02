@@ -1,0 +1,53 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ratelimit
+  namespace: istio-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ratelimit
+  template:
+    metadata:
+      labels:
+        app: ratelimit
+    spec:
+      containers:
+      - name: ratelimit
+        image: envoyproxy/ratelimit:latest
+        ports:
+        - containerPort: 8080
+        - containerPort: 8081
+        env:
+        - name: REDIS_SOCKET_TYPE
+          value: tcp
+        - name: REDIS_URL
+          value: redis-ratelimit-svc:6379
+        - name: RUNTIME_ROOT
+          value: /data
+        - name: RUNTIME_SUBDIRECTORY
+          value: ratelimit
+        volumeMounts:
+        - name: config
+          mountPath: /data/ratelimit/config
+      volumes:
+      - name: config
+        configMap:
+          name: ratelimit-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ratelimit-svc
+  namespace: istio-system
+spec:
+  selector:
+    app: ratelimit
+  ports:
+  - name: grpc
+    port: 8081
+    targetPort: 8081
+  - name: http
+    port: 8080
+    targetPort: 8080

@@ -1,0 +1,73 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: victoria-logs
+  namespace: observability
+  labels:
+    app: victoria-logs
+spec:
+  selector:
+    app: victoria-logs
+  ports:
+    - name: http
+      port: 9428
+      targetPort: 9428
+    - name: loki
+      port: 3100
+      targetPort: 3100
+  clusterIP: None
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: victoria-logs
+  namespace: observability
+spec:
+  serviceName: victoria-logs
+  replicas: 1
+  selector:
+    matchLabels:
+      app: victoria-logs
+  template:
+    metadata:
+      labels:
+        app: victoria-logs
+    spec:
+      containers:
+        - name: victoria-logs
+          image: victoriametrics/victoria-logs:latest
+          args:
+            - "-storageDataPath=/data"
+            - "-httpListenAddr=:9428"
+            - "-lokiIngestAddr=:3100"
+          ports:
+            - containerPort: 9428
+              name: http
+            - containerPort: 3100
+              name: loki
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 1Gi
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: victoria-logs-pvc
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: victoria-logs-pvc
+  namespace: observability
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 50Gi

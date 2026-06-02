@@ -1,0 +1,41 @@
+{
+  "title": "Microservices Overview",
+  "uid": "microservices-overview",
+  "panels": [
+    {
+      "title": "RPS (requests per second) by service",
+      "targets": [
+        {
+          "expr": "sum(rate(istio_requests_total[1m])) by (destination_service)",
+          "legendFormat": "{{ destination_service }}"
+        }
+      ]
+    },
+    {
+      "title": "p95 Latency (seconds) by service",
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(istio_request_duration_milliseconds_bucket[5m])) by (le, destination_service)) / 1000",
+          "legendFormat": "{{ destination_service }} p95"
+        }
+      ]
+    },
+    {
+      "title": "Error Rate (%) by service",
+      "targets": [
+        {
+          "expr": "sum(rate(istio_requests_total{response_code=~\"5..\"}[5m])) by (destination_service) / sum(rate(istio_requests_total[5m])) by (destination_service) * 100",
+          "legendFormat": "{{ destination_service }}"
+        }
+      ]
+    },
+    {
+      "title": "Active connections (TCP)",
+      "targets": [
+        {
+          "expr": "sum(envoy_cluster_upstream_cx_active) by (cluster_name)"
+        }
+      ]
+    }
+  ]
+}
